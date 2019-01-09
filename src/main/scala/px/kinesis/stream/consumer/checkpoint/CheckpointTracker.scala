@@ -2,12 +2,12 @@ package px.kinesis.stream.consumer.checkpoint
 
 import akka.Done
 import akka.actor.{Actor, ActorSystem}
-import akka.event.{Logging, LoggingAdapter}
 import akka.pattern.{AskTimeoutException, ask}
 import akka.util.Timeout
+import px.kinesis.stream.consumer.checkpoint.CheckpointTrackerActor._
 import software.amazon.kinesis.processor.RecordProcessorCheckpointer
 import software.amazon.kinesis.retrieval.kpl.ExtendedSequenceNumber
-import CheckpointTrackerActor._
+
 import scala.collection.immutable.Iterable
 import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
@@ -21,10 +21,9 @@ class CheckpointTracker(
 
   @volatile var isShutdown = false
 
-  var logging: LoggingAdapter = Logging(system, this.getClass)
-
   val tracker = system.actorOf(
-    CheckpointTrackerActor.props(workerId, maxBufferSize, maxDurationInSeconds),
+    CheckpointTrackerActor
+      .props(workerId, maxBufferSize, maxDurationInSeconds),
     s"tracker-${workerId.take(5)}")
 
   /**
@@ -35,13 +34,12 @@ class CheckpointTracker(
     * @param sequences
     * @return
     */
-  def track(shardId: String, sequences: Iterable[ExtendedSequenceNumber]) =
-    timeFuture("track") {
-      tracker
-        .ask(Track(shardId, sequences))(timeout)
-        .map(_ => Done)
-        .recoverWith(mapAskTimeout("track", shardId))
-    }
+  def track(shardId: String, sequences: Iterable[ExtendedSequenceNumber]) = {
+    tracker
+      .ask(Track(shardId, sequences))(timeout)
+      .map(_ => Done)
+      .recoverWith(mapAskTimeout("track", shardId))
+  }
 
   /**
     * Mark a sequence number as processed
@@ -52,13 +50,12 @@ class CheckpointTracker(
     * @param sequence
     * @return
     */
-  def process(shardId: String, sequence: ExtendedSequenceNumber) =
-    timeFuture("process") {
-      tracker
-        .ask(Process(shardId, sequence))(timeout)
-        .map(_ => Done)
-        .recoverWith(mapAskTimeout("process", shardId))
-    }
+  def process(shardId: String, sequence: ExtendedSequenceNumber) = {
+    tracker
+      .ask(Process(shardId, sequence))(timeout)
+      .map(_ => Done)
+      .recoverWith(mapAskTimeout("process", shardId))
+  }
 
   /**
     * Checkpoint only if conditions are met (enough time elapsed or buffer is full)
@@ -67,13 +64,12 @@ class CheckpointTracker(
     * @return
     */
   def checkpointIfNeeded(shardId: String,
-                         checkpointer: RecordProcessorCheckpointer) =
-    timeFuture("checkpoint") {
-      tracker
-        .ask(CheckpointIfNeeded(shardId, checkpointer))(timeout)
-        .map(_ => Done)
-        .recoverWith(mapAskTimeout("checkpointIfNeeded", shardId))
-    }
+                         checkpointer: RecordProcessorCheckpointer) = {
+    tracker
+      .ask(CheckpointIfNeeded(shardId, checkpointer))(timeout)
+      .map(_ => Done)
+      .recoverWith(mapAskTimeout("checkpointIfNeeded", shardId))
+  }
 
   /**
     * Forces checkpointing to occur for current highest checkpointable sequence number
@@ -125,16 +121,6 @@ class CheckpointTracker(
     }
   }
 
-  private def timeFuture[A](name: String)(fut: Future[A]): Future[A] = {
-    val start = System.currentTimeMillis()
-    fut.onComplete {
-      case _ =>
-        logging.debug(s"{} took {}ms", name, System.currentTimeMillis() - start)
-    }
-
-    fut
-  }
-
   private def mapAskTimeout[A](
       name: String,
       shardId: String): PartialFunction[Throwable, Future[A]] = {
@@ -172,6 +158,6 @@ object CheckpointTracker {
 }
 
 case class CheckpointConfig(completionTimeout: Timeout = Timeout(30.seconds),
-                            maxBufferSize: Int = 100000,
+                            maxBufferSize: Int = 10000,
                             maxDurationInSeconds: Int = 60,
                             timeout: Timeout = Timeout(20.seconds))

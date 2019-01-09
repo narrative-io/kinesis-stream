@@ -16,7 +16,7 @@ import scala.collection.JavaConverters._
 import scala.collection.immutable.Seq
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, ExecutionContext, Future}
-import scala.util.Try
+import scala.util.{Failure, Try}
 class RecordProcessorImpl(
     queue: SourceQueueWithComplete[Seq[Record]],
     tracker: CheckpointTracker,
@@ -24,6 +24,7 @@ class RecordProcessorImpl(
     workerId: String)(implicit ec: ExecutionContext, logging: LoggingAdapter)
     extends ShardRecordProcessor {
 
+  val EnqueueBatchSize = 100
   var shardId: String = _
 
   override def initialize(initializationInput: InitializationInput): Unit = {
@@ -38,7 +39,11 @@ class RecordProcessorImpl(
     val records = transformRecords(processRecordsInput.records())
     trackRecords(records)
     checkpointIfNeeded(processRecordsInput.checkpointer())
-    enqueueRecords(records)
+
+    records.grouped(EnqueueBatchSize).foreach { r =>
+      enqueueRecords(r)
+      checkpointIfNeeded(processRecordsInput.checkpointer())
+    }
   }
 
   def transformRecords(
@@ -47,9 +52,8 @@ class RecordProcessorImpl(
   }
 
   def trackRecords(records: Seq[Record]): Unit =
-    blockAndTerminateOnFailure(
-      "trackRecords",
-      tracker.track(shardId, records.map(_.extendedSequenceNumber)))
+    blocking("trackRecords",
+             tracker.track(shardId, records.map(_.extendedSequenceNumber)))
 
   def enqueueRecords(records: Seq[Record]) = {
 
@@ -100,9 +104,8 @@ class RecordProcessorImpl(
   }
 
   def checkpointIfNeeded(checkpointer: RecordProcessorCheckpointer): Unit =
-    blockAndTerminateOnFailure(
-      "consumer/checkpoint",
-      tracker.checkpointIfNeeded(shardId, checkpointer))
+    blocking("consumer/checkpoint",
+             tracker.checkpointIfNeeded(shardId, checkpointer))
 
   def checkpointForShardEnd(checkpointer: RecordProcessorCheckpointer): Unit = {
     // wait for all in flight to be marked processed
@@ -116,7 +119,7 @@ class RecordProcessorImpl(
         Done
       }
 
-    blockAndTerminateOnFailure("checkpointForShardEnd", completion)
+    blockAndThrowOnFailure(completion)
   }
 
   def checkpointForShutdown(checkpointer: RecordProcessorCheckpointer): Unit = {
@@ -128,16 +131,31 @@ class RecordProcessorImpl(
       .flatMap(_ => tracker.checkpoint(shardId, checkpointer))
       .recover { case _ => Done }
 
-    blockAndTerminateOnFailure("checkpointForShutdown", completion)
+    blockAndThrowOnFailure(completion)
   }
 
-  def blockAndTerminateOnFailure[A](name: String,
-                                    future: Future[A]): Either[Throwable, A] = {
-    Try(Await.result(future, Duration.Inf)).toEither.left.map { ex =>
-      logging.error(ex, s"Failed on $name")
-      killSwitch.abort(ex)
-      ex
+  /**
+    * Blocks and absorbs errors into a Try
+    * @param name
+    * @param future
+    * @tparam A
+    * @return
+    */
+  def blocking[A](name: String, future: Future[A]): Try[A] = {
+    Try(Await.result(future, Duration.Inf)).recoverWith {
+      case ex: Throwable =>
+        logging.error(ex, "Failed on {}", name)
+        Failure(ex)
     }
+  }
+
+  /**
+    * Block and throw exception on failure
+    * @param t
+    * @tparam A
+    */
+  def blockAndThrowOnFailure[A](fut: Future[A]): Unit = {
+    Await.result(fut, Duration.Inf)
   }
 
 }

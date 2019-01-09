@@ -10,5 +10,4 @@ appender("ASYNC-CONSOLE", AsyncAppender) {
     appenderRef("CONSOLE")
 }
 
-logger("px.kinesis.stream.consumer.checkpoint", DEBUG, ["ASYNC-CONSOLE"])
 root(INFO, ["ASYNC-CONSOLE"])
