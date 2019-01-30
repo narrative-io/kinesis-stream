@@ -7,9 +7,8 @@ import akka.actor.{Actor, ActorLogging, ActorRef, Props}
 import px.kinesis.stream.consumer.checkpoint.ShardCheckpointTrackerActor._
 import software.amazon.kinesis.processor.RecordProcessorCheckpointer
 import software.amazon.kinesis.retrieval.kpl.ExtendedSequenceNumber
-
 import scala.collection.immutable.{Iterable, Queue}
-import scala.util.Try
+import scala.util.{Success, Try}
 
 class ShardCheckpointTrackerActor(shardId: String,
                                   maxBufferSize: Int,

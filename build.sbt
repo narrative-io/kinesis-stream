@@ -1,20 +1,17 @@
 import sbt.Keys.{parallelExecution, scalacOptions}
 
-val scala11 = "2.11.12"
-val scala12 = "2.12.7"
-
+lazy val ScalaVersion = "2.11.12"
 val scalaSettings = Seq(
-  scalaVersion := scala12,
+  scalaVersion := ScalaVersion,
   scalacOptions ++= Seq(
     "-target:jvm-1.8",
     "-deprecation", // Emit warning and location for usages of deprecated APIs.
     "-feature", // Emit warning and location for usages of features that should be imported explicitly.
+    "-target:jvm-1.8",
     "-Ywarn-dead-code" // Warn when dead code is identified.
-  ),
-  crossScalaVersions := List(scala12, scala11)
+  )
 )
-
-val akkaStreamV = "2.5.14"
+val akkaStreamV = "2.5.19"
 
 val dependencySettings = Seq(
   libraryDependencies ++= Seq(
