@@ -1,5 +1,6 @@
-import aether.AetherKeys.aetherWagons
 import sbt.Keys.{parallelExecution, scalacOptions}
+import _root_.io.narrative.build._
+import _root_.io.narrative.build.LibraryProjectSettings
 
 lazy val ScalaVersion = "2.11.12"
 val scalaSettings = Seq(
@@ -27,25 +28,30 @@ val dependencySettings = Seq(
   )
 )
 
-val publishSettings = Seq(
-  credentials ++= sys.env
-    .get("PACKAGE_CLOUD_PUBLISH_KEY")
-    .map(key => Seq(Credentials("packagecloud", "packagecloud.io", "", key)))
-    .getOrElse(Seq(Credentials(Path.userHome / ".ivy2" / ".credentials"))),
-  aetherWagons := Seq(
-    aether.WagonWrapper("packagecloud+https",
-                        "io.packagecloud.maven.wagon.PackagecloudWagon")),
+val NarrativeReleases = "Narrative Releases" at "s3://s3-us-east-1.amazonaws.com/narrative-artifact-releases"
+val NarrativeSnapshots = "Narrative Snapshots" at "s3://s3-us-east-1.amazonaws.com/narrative-artifact-snapshots"
+
+lazy val SupportedScalaVersions = Seq(ScalaVersion)
+
+lazy val PublishSettings = Seq(
+  publishMavenStyle := false,
+  publishArtifact := true,
+  publishArtifact in (Test, packageBin) := true,
+  publishArtifact in (Compile, packageDoc) := false,
+  packagedArtifacts += ((artifact in makePom).value, makePom.value),
   publishTo := {
-    Some(
-      "packagecloud+https" at "packagecloud+https://packagecloud.io/500px/platform")
+    if (version.value.contains("SNAPSHOT")) Some(NarrativeSnapshots)
+    else Some(NarrativeReleases)
+  },
+  pomIncludeRepository := { _ =>
+    true
   }
 )
 
 lazy val root = (project in file("."))
   .settings(scalaSettings)
   .settings(name := "kinesis-stream", organization := "px")
-  .settings(publishSettings)
-  .settings(overridePublishSettings)
+  .settings(PublishSettings)
   .settings(dependencySettings)
   .settings(
     parallelExecution in Test := false,
