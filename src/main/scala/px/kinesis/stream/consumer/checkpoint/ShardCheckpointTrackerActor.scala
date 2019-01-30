@@ -7,9 +7,8 @@ import akka.actor.{Actor, ActorLogging, ActorRef, Props}
 import px.kinesis.stream.consumer.checkpoint.ShardCheckpointTrackerActor._
 import software.amazon.kinesis.processor.RecordProcessorCheckpointer
 import software.amazon.kinesis.retrieval.kpl.ExtendedSequenceNumber
-
 import scala.collection.immutable.{Iterable, Queue}
-import scala.util.Try
+import scala.util.{Success, Try}
 
 class ShardCheckpointTrackerActor(shardId: String,
                                   maxBufferSize: Int,
@@ -52,20 +51,20 @@ class ShardCheckpointTrackerActor(shardId: String,
           log.debug("Checkpointing(forced={}) {}", force, shardId)
           // we absorb the exceptions so we don't lose state for this actor
           Try(
-            checkpointer.checkpoint(s.sequenceNumber(), s.subSequenceNumber()))
-            .fold(
-              ex => sender() ! Failure(ex),
-              _ => {
-                log.info("Checkpointed Successfully: {} is at {}",
-                         shardId,
-                         formatSeqNum(s))
-                tracked = tracked.drop(checkpointable.size)
-                processed --= checkpointable
-                lastCheckpoint = Some(s)
-                timeSinceLastCheckpoint = now()
-                sender() ! Checkpointed(Some(s))
-              }
-            )
+            checkpointer.checkpoint(s.sequenceNumber(), s.subSequenceNumber())
+          ) match {
+            case Success(_) => {
+              log.info("Checkpointed Successfully: {} is at {}",
+                       shardId,
+                       formatSeqNum(s))
+              tracked = tracked.drop(checkpointable.size)
+              processed --= checkpointable
+              lastCheckpoint = Some(s)
+              timeSinceLastCheckpoint = now()
+              sender() ! Checkpointed(Some(s))
+            }
+            case failure => sender() ! failure
+          }
         } else {
           log.debug("Skipping Checkpoint: {}", shardId)
           sender() ! Checkpointed()

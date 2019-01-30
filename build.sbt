@@ -1,21 +1,17 @@
 import aether.AetherKeys.aetherWagons
 import sbt.Keys.{parallelExecution, scalacOptions}
 
+lazy val ScalaVersion = "2.11.12"
 val scalaSettings = Seq(
-  scalaVersion := "2.12.7",
+  scalaVersion := ScalaVersion,
   scalacOptions ++= Seq(
     "-deprecation", // Emit warning and location for usages of deprecated APIs.
     "-feature", // Emit warning and location for usages of features that should be imported explicitly.
-    "-Ywarn-dead-code", // Warn when dead code is identified.
-    "-Ywarn-unused:implicits", // Warn if an implicit parameter is unused.
-    "-Ywarn-unused:imports", // Warn if an import selector is not referenced.
-    "-Ywarn-unused:locals", // Warn if a local definition is unused.
-    "-Ywarn-unused:params", // Warn if a value parameter is unused.
-    "-Ywarn-unused:patvars", // Warn if a variable bound in a pattern is unused.
-    "-Ywarn-unused:privates" // Warn if a private member is unused.
+    "-target:jvm-1.8",
+    "-Ywarn-dead-code" // Warn when dead code is identified.
   )
 )
-val akkaStreamV = "2.5.14"
+val akkaStreamV = "2.5.19"
 
 val dependencySettings = Seq(
   libraryDependencies ++= Seq(
