@@ -13,6 +13,23 @@ val scalaSettings = Seq(
 )
 val akkaStreamV = "2.5.19"
 
+val NarrativeReleases = "Narrative Releases" at "s3://s3-us-east-1.amazonaws.com/narrative-artifact-releases"
+val NarrativeSnapshots = "Narrative Snapshots" at "s3://s3-us-east-1.amazonaws.com/narrative-artifact-snapshots"
+lazy val PublishSettings = Seq(
+  publishMavenStyle := false,
+  publishArtifact := true,
+  publishArtifact in (Test, packageBin) := true,
+  publishArtifact in (Compile, packageDoc) := false,
+  packagedArtifacts += ((artifact in makePom).value, makePom.value),
+  publishTo := {
+    if (version.value.contains("SNAPSHOT")) Some(NarrativeSnapshots)
+    else Some(NarrativeReleases)
+  },
+  pomIncludeRepository := { _ =>
+    true
+  }
+)
+
 val dependencySettings = Seq(
   libraryDependencies ++= Seq(
     "software.amazon.kinesis" % "amazon-kinesis-client" % "2.0.4",
@@ -27,57 +44,10 @@ val dependencySettings = Seq(
   )
 )
 
-val sonatypeSettings = Seq(
-  homepage := Some(url("https://github.com/500px/kinesis-stream")),
-  scmInfo := Some(
-    ScmInfo(url("https://github.com/500px/kinesis-stream"),
-            "git@github.com:500px/kinesis-stream.git")),
-  developers := List(
-    Developer("platform",
-              "Platform Team",
-              "platform@500px.com",
-              url("https://github.com/500px"))),
-  licenses += ("MIT", url("https://opensource.org/licenses/MIT")),
-  publishMavenStyle := true,
-  credentials ++= sys.env
-    .get("SONATYPE_USERNAME")
-    .zip(sys.env.get("SONATYPE_PASSWORD"))
-    .headOption
-    .map {
-      case (username, password) =>
-        Seq(
-          Credentials("Sonatype Nexus Repository Manager",
-                      "oss.sonatype.org",
-                      username,
-                      password))
-    }
-    .getOrElse(Seq.empty[Credentials])
-)
-
-def getUserKeyRingPath(name: String): Option[File] =
-  sys.env.get("GPG_KEYPAIR_FOLDER").map(folder => Path(folder) / name)
-def defaultKeyRing(name: String): File = Path.userHome / ".sbt" / "gpg" / name
-
-val publishSettings = Seq(
-  pgpPublicRing := getUserKeyRingPath("pubring.asc")
-    .getOrElse(defaultKeyRing("pubring.asc")),
-  pgpSecretRing := getUserKeyRingPath("secring.asc")
-    .getOrElse(defaultKeyRing("secring.asc")),
-  usePgpKeyHex("1E0CE91DF4E8CDEF9D0C9C1EDDD2DB9AA86CE295"),
-  pgpPassphrase := sys.env.get("GPG_PASS_PHRASE").map(key => key.toCharArray),
-  publishTo := Some(
-    if (isSnapshot.value)
-      Opts.resolver.sonatypeSnapshots
-    else
-      Opts.resolver.sonatypeStaging
-  )
-)
-
 lazy val root = (project in file("."))
   .settings(scalaSettings)
   .settings(name := "kinesis-stream", organization := "com.500px")
-  .settings(sonatypeSettings)
-  .settings(publishSettings)
+  .settings(PublishSettings)
   .settings(dependencySettings)
   .settings(
     parallelExecution in Test := false,
