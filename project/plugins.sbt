@@ -5,4 +5,4 @@ resolvers ++= Seq(
 
 // TODO: testing out new common-build before rolling
 addSbtPlugin("io.narrative" % "common-build" % "2.0.5")
-addSbtPlugin("com.lucidchart" % "sbt-scalafmt" % "1.15")
+//addSbtPlugin("com.lucidchart" % "sbt-scalafmt" % "1.15")

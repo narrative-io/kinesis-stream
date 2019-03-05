@@ -93,9 +93,7 @@ class StreamScheduler(config: ConsumerConfig)(
       configsBuilder
         .processorConfig()
         .callProcessRecordsEvenForEmptyRecordList(true),
-      configsBuilder
-        .retrievalConfig()
-        .initialPositionInStreamExtended(config.initialPositionInStreamExtended)
+      config.retrievalConfig.getOrElse(configsBuilder.retrievalConfig())
     )
   }
 

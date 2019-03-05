@@ -83,7 +83,7 @@ class CheckpointTrackerActor(workerId: String,
   def forward(shardId: String, message: shard.Command): Unit =
     trackers.get(shardId) match {
       case Some(TrackerState(ref, isTerminating)) if !isTerminating =>
-        log.info(s"forwarding $message")
+        log.debug(s"forwarding $message")
         ref.forward(message)
       case _ =>
         log.warning("Tracker for {} is not active", shardId)

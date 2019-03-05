@@ -13,6 +13,20 @@ val scalaSettings = Seq(
 )
 val akkaStreamV = "2.5.19"
 
+val dependencySettings = Seq(
+  libraryDependencies ++= Seq(
+    "software.amazon.kinesis" % "amazon-kinesis-client" % "2.1.0",
+    "com.typesafe.akka" %% "akka-stream" % akkaStreamV,
+    "com.typesafe.akka" %% "akka-slf4j" % akkaStreamV,
+    "ch.qos.logback" % "logback-classic" % "1.2.3",
+    "com.typesafe.scala-logging" %% "scala-logging" % "3.9.0",
+    "org.codehaus.groovy" % "groovy-all" % "2.4.1",
+    "org.scalamock" %% "scalamock" % "4.1.0" % Test,
+    "org.scalatest" %% "scalatest" % "3.0.5" % Test,
+    "com.typesafe.akka" %% "akka-stream-testkit" % akkaStreamV % Test
+  )
+)
+
 val NarrativeReleases = "Narrative Releases" at "s3://s3-us-east-1.amazonaws.com/narrative-artifact-releases"
 val NarrativeSnapshots = "Narrative Snapshots" at "s3://s3-us-east-1.amazonaws.com/narrative-artifact-snapshots"
 lazy val PublishSettings = Seq(
@@ -30,20 +44,6 @@ lazy val PublishSettings = Seq(
   }
 )
 
-val dependencySettings = Seq(
-  libraryDependencies ++= Seq(
-    "software.amazon.kinesis" % "amazon-kinesis-client" % "2.0.4",
-    "com.typesafe.akka" %% "akka-stream" % akkaStreamV,
-    "com.typesafe.akka" %% "akka-slf4j" % akkaStreamV,
-    "ch.qos.logback" % "logback-classic" % "1.2.3",
-    "com.typesafe.scala-logging" %% "scala-logging" % "3.9.0",
-    "org.codehaus.groovy" % "groovy-all" % "2.4.1",
-    "org.scalamock" %% "scalamock" % "4.1.0" % Test,
-    "org.scalatest" %% "scalatest" % "3.0.5" % Test,
-    "com.typesafe.akka" %% "akka-stream-testkit" % akkaStreamV % Test
-  )
-)
-
 lazy val root = (project in file("."))
   .settings(scalaSettings)
   .settings(name := "kinesis-stream", organization := "com.500px")
@@ -51,10 +51,10 @@ lazy val root = (project in file("."))
   .settings(dependencySettings)
   .settings(
     parallelExecution in Test := false,
-    logBuffered in Test := false,
-    scalafmtOnCompile in ThisBuild := true, // all projects
-    scalafmtOnCompile := true, // current project
-    scalafmtOnCompile in Compile := true
+    logBuffered in Test := false//,
+    //scalafmtOnCompile in ThisBuild := true, // all projects
+    //scalafmtOnCompile := true, // current project
+    //scalafmtOnCompile in Compile := true
   )
 
 // examples
